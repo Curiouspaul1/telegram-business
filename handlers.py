@@ -85,44 +85,82 @@ def choose(update, context):
             text="Type /start, to restart bot"
         )
         return ConversationHandler.END
-    #TODO: Check if user already exists before creating new user
-    new_user = client.query(
+    # Check if user already exists before creating new user
+    _user = client.query(
         q.get(
-            q.ref(
-                q.match(
-                    "user_by_chat_id", data['chat_id']
-                )
+            q.match(
+                q.index("user_by_chat_id"),
+                chat_id
             )
         )
-    )
-    if new_user != None:
-        print(new_user)
+    )['data']
+    print(_user)
+    if _user != None:
+        print(_user)
         bot.send_message(
             chat_id=chat_id,
             text="Hi it seems you already have an account with us!"
         )
-    new_user = client.query(
-        q.create(q.collection('User'), {
-            "data":{
-                "name":data[0],
-                "email":data[1],
-                "telephone":data[2],
-                "is_smeowner":False,
-                "preference": "",
-                "chat_id":chat_id
-            }
-        })
-    )
-    context.user_data["user-id"] = new_user["ref"].id()
-    context.user_data["user-name"] = data[0]
-    context.user_data['user-data'] = new_user['data']
-    bot.send_message(
-        chat_id=chat_id,
-        text="Collected information succesfully!..🎉🎉 \n"
-        "Which of the following do you identify as ?",
-        reply_markup=markup
-    )
-    return CLASS_STATE
+        # figure out  what kind of user they are
+        if _user['is_smeowner']:
+            print("yes")
+            # find business with user's chat_id
+            sme = client.query(
+                q.get(
+                    q.match(
+                        q.index("business_by_chat_id"),
+                        chat_id
+                    )
+                )
+            )
+            if sme:
+                context.user_data["sme_name"] = sme['data']['name']
+                context.user_data['category'] = sme['data']['category']
+                button = [
+                    [
+                        InlineKeyboardButton(
+                            text="Add A New Product",
+                            callback_data=chat_id
+                        )
+                    ]
+                ]
+                markup = InlineKeyboardMarkup(
+                    button,
+                    one_time_keyboard=True
+                )
+                bot.send_message(
+                    chat_id=chat_id,
+                    text=f"Welcome back {_user['name']}!",
+                    reply_markup=markup
+                )
+                return ADD_PRODUCTS
+        else:
+            context.user_data["user-id"] = _user["ref"].id()
+            context.user_data["user-name"] = _user['name']
+            context.user_data['user-data'] = new_user['data']
+    else:
+        new_user = client.query(
+            q.create(q.collection('User'), {
+                "data":{
+                    "name":data[0],
+                    "email":data[1],
+                    "telephone":data[2],
+                    "is_smeowner":False,
+                    "preference": "",
+                    "chat_id":chat_id
+                }
+            })
+        )
+        context.user_data["user-id"] = new_user["ref"].id()
+        context.user_data["user-name"] = data[0]
+        context.user_data['user-data'] = new_user['data']
+        bot.send_message(
+            chat_id=chat_id,
+            text="Collected information succesfully!..🎉🎉 \n"
+            "Which of the following do you identify as ?",
+            reply_markup=markup
+        )
+        return CLASS_STATE
 
 def classer(update, context):
     bot = context.bot
@@ -227,6 +265,7 @@ def business_details_update(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
     choice = update.callback_query.data
+    user_id = context.user_data['user-id']
     # create business
     new_sme = client.query(
         q.create(
@@ -236,7 +275,8 @@ def business_details_update(update, context):
                 "email":context.user_data["sme_dets"][1],
                 "address":context.user_data["sme_dets"][2],
                 "telephone":context.user_data["sme_dets"][3],
-                "category":choice.lower()
+                "category":choice.lower(),
+                "chat_id": chat_id
             }}
         )
     )
