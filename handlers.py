@@ -86,59 +86,59 @@ def choose(update, context):
         )
         return ConversationHandler.END
     # Check if user already exists before creating new user
-    _user = client.query(
-        q.get(
-            q.match(
-                q.index("user_by_chat_id"),
-                chat_id
+    try:
+        _user = client.query(
+            q.get(
+                q.match(
+                    q.index("user_by_chat_id"),
+                    chat_id
+                )
             )
-        )
-    )['data']
-    print(_user)
-    if _user != None:
-        print(_user)
-        bot.send_message(
-            chat_id=chat_id,
-            text="Hi it seems you already have an account with us!"
-        )
-        # figure out  what kind of user they are
-        if _user['is_smeowner']:
-            print("yes")
-            # find business with user's chat_id
-            sme = client.query(
-                q.get(
-                    q.match(
-                        q.index("business_by_chat_id"),
-                        chat_id
+        )['data']
+        if _user != None:
+            print(_user)
+            bot.send_message(
+                chat_id=chat_id,
+                text="Hi it seems you already have an account with us!"
+            )
+            # figure out  what kind of user they are
+            if _user['is_smeowner']:
+                print("yes")
+                # find business with user's chat_id
+                sme = client.query(
+                    q.get(
+                        q.match(
+                            q.index("business_by_chat_id"),
+                            chat_id
+                        )
                     )
                 )
-            )
-            if sme:
-                context.user_data["sme_name"] = sme['data']['name']
-                context.user_data['category'] = sme['data']['category']
-                button = [
-                    [
-                        InlineKeyboardButton(
-                            text="Add A New Product",
-                            callback_data=chat_id
-                        )
+                if sme:
+                    context.user_data["sme_name"] = sme['data']['name']
+                    context.user_data['category'] = sme['data']['category']
+                    button = [
+                        [
+                            InlineKeyboardButton(
+                                text="Add A New Product",
+                                callback_data=chat_id
+                            )
+                        ]
                     ]
-                ]
-                markup = InlineKeyboardMarkup(
-                    button,
-                    one_time_keyboard=True
-                )
-                bot.send_message(
-                    chat_id=chat_id,
-                    text=f"Welcome back {_user['name']}!",
-                    reply_markup=markup
-                )
-                return ADD_PRODUCTS
+                    _markup = InlineKeyboardMarkup(
+                        button,
+                        one_time_keyboard=True
+                    )
+                    bot.send_message(
+                        chat_id=chat_id,
+                        text=f"Welcome back {_user['name']}!",
+                        reply_markup=_markup
+                    )
+                    return ADD_PRODUCTS
         else:
             context.user_data["user-id"] = _user["ref"].id()
             context.user_data["user-name"] = _user['name']
             context.user_data['user-data'] = new_user['data']
-    else:
+    except NotFound:
         new_user = client.query(
             q.create(q.collection('User'), {
                 "data":{
@@ -161,6 +161,7 @@ def choose(update, context):
             reply_markup=markup
         )
         return CLASS_STATE
+
 
 def classer(update, context):
     bot = context.bot
