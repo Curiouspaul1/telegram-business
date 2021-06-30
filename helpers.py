@@ -1,6 +1,11 @@
 import re
-
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+from dotenv import load_dotenv
+import os
 # Email regex
+
+load_dotenv()
 
 def emailcheck(str):
     """
@@ -32,3 +37,20 @@ def emailcheck(str):
     except AttributeError:
         raise False
 
+
+
+# def dispatch_mail(email):
+#     print(email)
+#     with open('email.html', 'r') as file:
+#         msg = Mail(
+#             from_email=(os.getenv('SENDER_EMAIL'), 'Paul From Telegram-Business'),
+#             to_email=email,
+#             subject="Welcome to smebot! - Next Steps",
+#             html_content=file.read()
+#         )
+#     try:
+#         client = SendGridAPIClient(os.getenv('SENDGRID_API_KEY')).send(msg)
+#         print(client.status_code)
+#         print("Done!..")
+#     except Exception as e:
+#         print(e.message)

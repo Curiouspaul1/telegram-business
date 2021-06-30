@@ -21,6 +21,8 @@ from faunadb import query as q
 from faunadb.client import FaunaClient
 from faunadb.errors import NotFound
 from helpers import emailcheck
+import os
+
 
 
 # configure cloudinary
@@ -38,6 +40,23 @@ CHOOSING, CLASS_STATE, SME_DETAILS, CHOOSE_PREF, \
     SME_CAT, ADD_PRODUCTS, SHOW_STOCKS, POST_VIEW_PRODUCTS = range(8)
 
 # inital options
+
+# emailing function
+def dispatch_mail(email):
+    print(email)
+    with open('email.html', 'r', encoding="utf8") as file:
+        msg = Mail(
+            from_email=(os.getenv('SENDER_EMAIL'), 'Paul From Telegram-Business'),
+            to_emails=[email],
+            subject="Welcome to smebot! - Next Steps",
+            html_content=file.read()
+        )
+    try:
+        client = SendGridAPIClient(os.getenv('SENDGRID_API_KEY')).send(msg)
+        print(client.status_code)
+        print("Done!..")
+    except Exception as e:
+        print(e.message)
 
 reply_keyboard = [
     [
@@ -173,6 +192,10 @@ def choose(update, context):
             "Which of the following do you identify as ?",
             reply_markup=markup
         )
+        # print(data[1].replace(" ",""))
+        # print(emailcheck(data[1].replace(" ","")))
+        if emailcheck(data[1].replace(" ","")):
+            dispatch_mail(data[1].replace(" ",""))
         return CLASS_STATE
 
 
