@@ -439,6 +439,7 @@ def customer_pref(update, context):
                     text=f"{sme['data']['name']}",
                     reply_markup=InlineKeyboardMarkup(button)
                 )
+        return SHOW_STOCKS
     except NotFound:
         button = [[
             InlineKeyboardButton(
@@ -452,7 +453,7 @@ def customer_pref(update, context):
             reply_markup=InlineKeyboardMarkup(button)
         )
         return CLASS_STATE
-    return SHOW_STOCKS
+    # return SHOW_STOCKS
 
 def show_products(update, context):
     bot = context.bot
@@ -481,7 +482,7 @@ def show_products(update, context):
         button = [
             [
                 InlineKeyboardButton(
-                    text="Vieew more businesses category",
+                    text="View more businesses category",
                     callback_data='customer'
                 )
             ]
@@ -502,11 +503,20 @@ def show_products(update, context):
             )
         )
     )
-    # print(products)
-    if len(products) <= 0:
+
+    if len(products['data']) == 0:
+        button = [
+            [
+                InlineKeyboardButton(
+                    text="View businesses to buy from",
+                    callback_data="customer"
+                )
+            ]
+        ]
         bot.send_message(
             chat_id=chat_id,
-            text="'Nothing here yet, user hasn't added any products!, check back later"
+            text="'Nothing here yet, user hasn't added any products!, check back later",
+            reply_markup=InlineKeyboardMarkup(button)
         )
         return CLASS_STATE
     for product in products["data"]:
@@ -538,6 +548,7 @@ def post_view_products(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
     data = update.callback_query.data
+    print(data)
     product = client.query(
         q.get(
             q.ref(
