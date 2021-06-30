@@ -129,6 +129,7 @@ def start(update, context: CallbackContext) -> int:
             else:
                 context.user_data["user-id"] = _user["ref"].id()
                 context.user_data["user-name"] = _user['data']['name']
+                context.user_data['user-data'] = _user['data']
                 button = [
                     [
                         InlineKeyboardButton(
