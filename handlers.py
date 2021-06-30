@@ -76,34 +76,6 @@ def start(update, context: CallbackContext) -> int:
     print("You called")
     bot = context.bot
     chat_id = update.message.chat.id
-    bot.send_message(
-        chat_id=chat_id,
-        text= "Hi fellow, Welcome to SMEbot ,"
-        "Please tell me about yourself, "
-        "provide your full name, email, and phone number, "
-        "separated by comma each e.g: "
-        "John Doe, JohnD@gmail.com, +234567897809"
-    )
-    return CHOOSING
-
-
-# get data generic user data from user and store
-def choose(update, context):
-    bot = context.bot
-    chat_id = update.message.chat.id
-    # create new data entry
-    data = update.message.text.split(',')
-    if len(data) < 3 or len(data) > 3:
-        bot.send_message(
-            chat_id=chat_id,
-            text="Invalid entry, please make sure to input the details "
-            "as requested in the instructions"
-        )
-        bot.send_message(
-            chat_id=chat_id,
-            text="Type /start, to restart bot"
-        )
-        return ConversationHandler.END
     # Check if user already exists before creating new user
     try:
         _user = client.query(
@@ -172,32 +144,60 @@ def choose(update, context):
                 )
                 return CLASS_STATE
     except NotFound:
-        new_user = client.query(
-            q.create(q.collection('User'), {
-                "data":{
-                    "name":data[0],
-                    "email":data[1],
-                    "telephone":data[2],
-                    "is_smeowner":False,
-                    "preference": "",
-                    "chat_id":chat_id
-                }
-            })
-        )
-        context.user_data["user-id"] = new_user["ref"].id()
-        context.user_data["user-name"] = data[0]
-        context.user_data['user-data'] = new_user['data']
         bot.send_message(
             chat_id=chat_id,
-            text="Collected information succesfully!..🎉🎉 \n"
-            "Which of the following do you identify as ?",
-            reply_markup=markup
+            text= "Hi fellow, Welcome to SMEbot ,"
+            "Please tell me about yourself, "
+            "provide your full name, email, and phone number, "
+            "separated by comma each e.g: "
+            "John Doe, JohnD@gmail.com, +234567897809"
         )
-        # print(data[1].replace(" ",""))
-        # print(emailcheck(data[1].replace(" ","")))
-        if emailcheck(data[1].replace(" ","")):
-            dispatch_mail(data[1].replace(" ",""))
-        return CLASS_STATE
+        return CHOOSING
+
+
+# get data generic user data from user and store
+def choose(update, context):
+    bot = context.bot
+    chat_id = update.message.chat.id
+    # create new data entry
+    data = update.message.text.split(',')
+    if len(data) < 3 or len(data) > 3:
+        bot.send_message(
+            chat_id=chat_id,
+            text="Invalid entry, please make sure to input the details "
+            "as requested in the instructions"
+        )
+        bot.send_message(
+            chat_id=chat_id,
+            text="Type /start, to restart bot"
+        )
+        return ConversationHandler.END
+    new_user = client.query(
+        q.create(q.collection('User'), {
+            "data":{
+                "name":data[0],
+                "email":data[1],
+                "telephone":data[2],
+                "is_smeowner":False,
+                "preference": "",
+                "chat_id":chat_id
+            }
+        })
+    )
+    context.user_data["user-id"] = new_user["ref"].id()
+    context.user_data["user-name"] = data[0]
+    context.user_data['user-data'] = new_user['data']
+    bot.send_message(
+        chat_id=chat_id,
+        text="Collected information succesfully!..🎉🎉 \n"
+        "Which of the following do you identify as ?",
+        reply_markup=markup
+    )
+    # print(data[1].replace(" ",""))
+    # print(emailcheck(data[1].replace(" ","")))
+    if emailcheck(data[1].replace(" ","")):
+        dispatch_mail(data[1].replace(" ",""))
+    return CLASS_STATE
 
 
 def classer(update, context):
