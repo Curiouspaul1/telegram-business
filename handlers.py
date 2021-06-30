@@ -134,7 +134,7 @@ def choose(update, context):
                 )
                 if sme:
                     context.user_data["sme_name"] = sme['data']['name']
-                    context.user_data['category'] = sme['data']['category']
+                    context.user_data['sme_cat'] = sme['data']['category']
                     button = [
                         [
                             InlineKeyboardButton(
