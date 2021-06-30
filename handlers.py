@@ -94,7 +94,7 @@ def choose(update, context):
                     chat_id
                 )
             )
-        )['data']
+        )
         if _user != None:
             print(_user)
             bot.send_message(
@@ -102,7 +102,7 @@ def choose(update, context):
                 text="Hi it seems you already have an account with us!"
             )
             # figure out  what kind of user they are
-            if _user['is_smeowner']:
+            if _user['data']['is_smeowner']:
                 print("yes")
                 # find business with user's chat_id
                 sme = client.query(
@@ -130,14 +130,27 @@ def choose(update, context):
                     )
                     bot.send_message(
                         chat_id=chat_id,
-                        text=f"Welcome back {_user['name']}!",
+                        text=f"Welcome back {_user['data']['name']}!",
                         reply_markup=_markup
                     )
                     return ADD_PRODUCTS
-        else:
-            context.user_data["user-id"] = _user["ref"].id()
-            context.user_data["user-name"] = _user['name']
-            context.user_data['user-data'] = new_user['data']
+            else:
+                context.user_data["user-id"] = _user["ref"].id()
+                context.user_data["user-name"] = _user['data']['name']
+                button = [
+                    [
+                        InlineKeyboardButton(
+                            text="View businesses to buy from",
+                            callback_data="customer"
+                        )
+                    ]
+                ]
+                bot.send_message(
+                    chat_id=chat_id,
+                    text=f"Welcome back {_user['data']['name']}",
+                    reply_markup=InlineKeyboardMarkup(button)
+                )
+                return CLASS_STATE
     except NotFound:
         new_user = client.query(
             q.create(q.collection('User'), {
