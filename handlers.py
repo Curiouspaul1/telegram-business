@@ -463,8 +463,10 @@ def show_products(update, context):
     chat_id = update.callback_query.message.chat.id
     data = update.callback_query.data
     if "pref" in  data:
-        data = data.split(',')[0].replace(' ', '')
+        data = data.split(',')[0]
+        print(data.split(','))
         print(data)
+        print(data.replace(' ', ''))
         user = client.query(
             q.get(
                 q.ref(
