@@ -58,6 +58,7 @@ def dispatch_mail(email):
     except Exception as e:
         print(e.message)
 
+
 reply_keyboard = [
     [
         InlineKeyboardButton(
@@ -551,6 +552,7 @@ def post_view_products(update, context):
     chat_id = update.callback_query.message.chat.id
     data = update.callback_query.data
     print(data)
+    print(data.split(';')[1])
     product = client.query(
         q.get(
             q.ref(
