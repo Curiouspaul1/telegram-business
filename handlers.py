@@ -464,9 +464,7 @@ def show_products(update, context):
     data = update.callback_query.data
     if "pref" in  data:
         data = data.split(',')
-        print(data.split(','))
         print(data)
-        print(data.replace(' ', ''))
         user = client.query(
             q.get(
                 q.ref(
