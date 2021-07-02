@@ -583,8 +583,8 @@ def post_view_products(update, context):
         sme_ = client.query(
             q.get( 
                 q.match(
-                    q.index("business_by_name"), 
-                    data.split(';')[1]
+                    q.index("business_by_chat_id"), 
+                    product['sme_chat_id']
                 )
             )
         )['data']
