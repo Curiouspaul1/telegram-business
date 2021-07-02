@@ -551,15 +551,15 @@ def post_view_products(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
     data = update.callback_query.data
-    product = client.query(
+    if "order" in data:
+        product = client.query(
         q.get(
             q.ref(
-                q.collection("Product"),
-                data.split(';')[1]
+                    q.collection("Product"),
+                    data.split(';')[1]
+                )
             )
-        )
-    )["data"]
-    if "order" in data:
+        )["data"]
         bot.send_message(
             chat_id=product['sme_chat_id'],
             text="Hey you have a new order"
@@ -583,8 +583,8 @@ def post_view_products(update, context):
         sme_ = client.query(
             q.get( 
                 q.match(
-                    q.index("business_by_chat_id"), 
-                    product['sme_chat_id']
+                    q.index("business_by_name"), 
+                    data.split(';')[1]
                 )
             )
         )['data']
