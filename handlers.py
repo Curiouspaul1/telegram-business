@@ -551,8 +551,6 @@ def post_view_products(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
     data = update.callback_query.data
-    print(data)
-    print(data.split(';')[1])
     product = client.query(
         q.get(
             q.ref(
@@ -586,7 +584,7 @@ def post_view_products(update, context):
             q.get( 
                 q.match(
                     q.index("business_by_name"), 
-                    product['sme']
+                    data.split(';')[1]
                 )
             )
         )['data']
