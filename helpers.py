@@ -3,10 +3,11 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from dotenv import load_dotenv
 import os
-# Email regex
 
 load_dotenv()
 
+
+# Email regex
 def emailcheck(str):
     """
         emailCheck uses regex via python3's re module to verify
@@ -38,19 +39,25 @@ def emailcheck(str):
         raise False
 
 
+# emailing function
+def dispatch_mail(email):
+    print(email)
+    with open('email.html', 'r', encoding="utf8") as file:
+        msg = Mail(
+            from_email=(os.getenv('SENDER_EMAIL'), 'Paul From Telegram-Business'),
+            to_emails=[email],
+            subject="Welcome to smebot! - Next Steps",
+            html_content=file.read()
+        )
+    try:
+        client = SendGridAPIClient(os.getenv('SENDGRID_API_KEY')).send(msg)
+        print(client.status_code)
+        print("Done!..")
+    except Exception as e:
+        print(e.message)
 
-# def dispatch_mail(email):
-#     print(email)
-#     with open('email.html', 'r') as file:
-#         msg = Mail(
-#             from_email=(os.getenv('SENDER_EMAIL'), 'Paul From Telegram-Business'),
-#             to_email=email,
-#             subject="Welcome to smebot! - Next Steps",
-#             html_content=file.read()
-#         )
-#     try:
-#         client = SendGridAPIClient(os.getenv('SENDGRID_API_KEY')).send(msg)
-#         print(client.status_code)
-#         print("Done!..")
-#     except Exception as e:
-#         print(e.message)
+
+# generate unique business link
+def generate_link(biz_name):
+    url_ = "https://rdre.me/tgbiz"
+    return f"{url_}/{biz_name}"

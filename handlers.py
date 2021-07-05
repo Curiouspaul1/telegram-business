@@ -14,15 +14,17 @@ from config import (
     FAUNA_KEY
 )
 import cloudinary
-from cloudinary.uploader import upload
+from cloudinary.uploader import text, upload
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from faunadb import query as q
 from faunadb.client import FaunaClient
 from faunadb.errors import NotFound
-from helpers import emailcheck
+from helpers import (
+    emailcheck, dispatch_mail,
+    generate_link
+)
 import os
-
 
 
 # configure cloudinary
@@ -40,25 +42,6 @@ CHOOSING, CLASS_STATE, SME_DETAILS, CHOOSE_PREF, \
     SME_CAT, ADD_PRODUCTS, SHOW_STOCKS, POST_VIEW_PRODUCTS = range(8)
 
 # inital options
-
-# emailing function
-def dispatch_mail(email):
-    print(email)
-    with open('email.html', 'r', encoding="utf8") as file:
-        msg = Mail(
-            from_email=(os.getenv('SENDER_EMAIL'), 'Paul From Telegram-Business'),
-            to_emails=[email],
-            subject="Welcome to smebot! - Next Steps",
-            html_content=file.read()
-        )
-    try:
-        client = SendGridAPIClient(os.getenv('SENDGRID_API_KEY')).send(msg)
-        print(client.status_code)
-        print("Done!..")
-    except Exception as e:
-        print(e.message)
-
-
 reply_keyboard = [
     [
         InlineKeyboardButton(
@@ -114,6 +97,12 @@ def start(update, context: CallbackContext) -> int:
                             InlineKeyboardButton(
                                 text="Add A New Product",
                                 callback_data=chat_id
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                text="Get a business link",
+                                callback_data="link"
                             )
                         ]
                     ]
@@ -306,6 +295,7 @@ def business_details_update(update, context):
     chat_id = update.callback_query.message.chat.id
     choice = update.callback_query.data
     user_id = context.user_data['user-id']
+    biz_link = generate_link(context.user_data["sme_dets"][0])
     # create business
     new_sme = client.query(
         q.create(
@@ -316,6 +306,7 @@ def business_details_update(update, context):
                 "address":context.user_data["sme_dets"][2],
                 "telephone":context.user_data["sme_dets"][3],
                 "category":choice.lower(),
+                "business_link":biz_link,
                 "chat_id": chat_id
             }}
         )
@@ -323,6 +314,7 @@ def business_details_update(update, context):
     context.user_data["sme_name"] = context.user_data["sme_dets"][0]
     context.user_data["sme_id"] = new_sme["ref"].id()
     context.user_data["sme_cat"] = choice
+    context.user_data["sme_link"] = biz_link
     button = [[
         InlineKeyboardButton(
             text="Add a product",
@@ -340,6 +332,16 @@ def business_details_update(update, context):
 def add_product(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
+    if "link" in update.callback_query.message:
+        bot.send_message(
+            chat_id=chat_id,
+            text=context.user_data['sme_link']
+        )
+        bot.send_message(
+            chat_id=chat_id,
+            text="Here you go!, share the link with people so they can see your store."
+        )
+        return ConversationHandler.END
     bot.send_message(
         chat_id=chat_id,
         text="Add the Name, Description, and Price of product, "
