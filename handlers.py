@@ -92,7 +92,7 @@ def start(update, context: CallbackContext) -> int:
                     context.user_data["sme_name"] = sme['data']['name']
                     context.user_data['sme_cat'] = sme['data']['category']
                     context.user_data['sme_id'] = sme['ref'].id()
-                    context.user_data['sme_link'] = sme['data']['sme_link']
+                    context.user_data['sme_link'] = sme['data']['business_link']
                     button = [
                         [
                             InlineKeyboardButton(
