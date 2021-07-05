@@ -332,7 +332,7 @@ def business_details_update(update, context):
 def add_product(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
-    if "link" in update.callback_query.message:
+    if "link" in update.callback_query.data:
         bot.send_message(
             chat_id=chat_id,
             text=context.user_data['sme_link']
