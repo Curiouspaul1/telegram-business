@@ -8,7 +8,7 @@ import requests
 app = Flask(__name__)
 
 # endpoints
-@app.route("/<biz_name>", methods=['POST'])
+@app.route("/<biz_name>", methods=['GET'])
 def link(biz_name):
     bot_url = "https://t.me/TG_businessBot"
     return redirect(bot_url)
