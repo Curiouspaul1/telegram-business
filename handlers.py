@@ -14,13 +14,17 @@ from config import (
     FAUNA_KEY
 )
 import cloudinary
-from cloudinary.uploader import upload
+from cloudinary.uploader import text, upload
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from faunadb import query as q
 from faunadb.client import FaunaClient
 from faunadb.errors import NotFound
-from helpers import emailcheck
+from helpers import (
+    emailcheck, dispatch_mail,
+    generate_link
+)
+import os
 
 
 # configure cloudinary
@@ -38,7 +42,6 @@ CHOOSING, CLASS_STATE, SME_DETAILS, CHOOSE_PREF, \
     SME_CAT, ADD_PRODUCTS, SHOW_STOCKS, POST_VIEW_PRODUCTS = range(8)
 
 # inital options
-
 reply_keyboard = [
     [
         InlineKeyboardButton(
@@ -57,15 +60,91 @@ def start(update, context: CallbackContext) -> int:
     print("You called")
     bot = context.bot
     chat_id = update.message.chat.id
-    bot.send_message(
-        chat_id=chat_id,
-        text= "Hi fellow, Welcome to SMEbot ,"
-        "Please tell me about yourself, "
-        "provide your full name, email, and phone number, "
-        "separated by comma each e.g: "
-        "John Doe, JohnD@gmail.com, +234567897809"
-    )
-    return CHOOSING
+    # Check if user already exists before creating new user
+    try:
+        _user = client.query(
+            q.get(
+                q.match(
+                    q.index("user_by_chat_id"),
+                    chat_id
+                )
+            )
+        )
+        if _user != None:
+            print(_user)
+            bot.send_message(
+                chat_id=chat_id,
+                text="Hi it seems you already have an account with us!"
+            )
+            # figure out  what kind of user they are
+            if _user['data']['is_smeowner']:
+                print("yes")
+                # find business with user's chat_id
+                sme = client.query(
+                    q.get(
+                        q.match(
+                            q.index("business_by_chat_id"),
+                            chat_id
+                        )
+                    )
+                )
+                if sme:
+                    context.user_data["sme_name"] = sme['data']['name']
+                    context.user_data['sme_cat'] = sme['data']['category']
+                    context.user_data['sme_id'] = sme['ref'].id()
+                    context.user_data['sme_link'] = sme['data']['business_link']
+                    button = [
+                        [
+                            InlineKeyboardButton(
+                                text="Add A New Product",
+                                callback_data=chat_id
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                text="Get a business link",
+                                callback_data="link"
+                            )
+                        ]
+                    ]
+                    _markup = InlineKeyboardMarkup(
+                        button,
+                        one_time_keyboard=True
+                    )
+                    bot.send_message(
+                        chat_id=chat_id,
+                        text=f"Welcome back {_user['data']['name']}!",
+                        reply_markup=_markup
+                    )
+                    return ADD_PRODUCTS
+            else:
+                context.user_data["user-id"] = _user["ref"].id()
+                context.user_data["user-name"] = _user['data']['name']
+                context.user_data['user-data'] = _user['data']
+                button = [
+                    [
+                        InlineKeyboardButton(
+                            text="View businesses to buy from",
+                            callback_data="customer"
+                        )
+                    ]
+                ]
+                bot.send_message(
+                    chat_id=chat_id,
+                    text=f"Welcome back {_user['data']['name']}",
+                    reply_markup=InlineKeyboardMarkup(button)
+                )
+                return CLASS_STATE
+    except NotFound:
+        bot.send_message(
+            chat_id=chat_id,
+            text= "Hi fellow, Welcome to SMEbot ,"
+            "Please tell me about yourself, "
+            "provide your full name, email, and phone number, "
+            "separated by comma each e.g: "
+            "John Doe, JohnD@gmail.com, +234567897809"
+        )
+        return CHOOSING
 
 
 # get data generic user data from user and store
@@ -85,22 +164,6 @@ def choose(update, context):
             text="Type /start, to restart bot"
         )
         return ConversationHandler.END
-    #TODO: Check if user already exists before creating new user
-    new_user = client.query(
-        q.get(
-            q.ref(
-                q.match(
-                    "user_by_chat_id", data['chat_id']
-                )
-            )
-        )
-    )
-    if new_user != None:
-        print(new_user)
-        bot.send_message(
-            chat_id=chat_id,
-            text="Hi it seems you already have an account with us!"
-        )
     new_user = client.query(
         q.create(q.collection('User'), {
             "data":{
@@ -122,7 +185,12 @@ def choose(update, context):
         "Which of the following do you identify as ?",
         reply_markup=markup
     )
+    # print(data[1].replace(" ",""))
+    # print(emailcheck(data[1].replace(" ","")))
+    if emailcheck(data[1].replace(" ","")):
+        dispatch_mail(data[1].replace(" ",""))
     return CLASS_STATE
+
 
 def classer(update, context):
     bot = context.bot
@@ -227,6 +295,8 @@ def business_details_update(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
     choice = update.callback_query.data
+    user_id = context.user_data['user-id']
+    biz_link = generate_link(context.user_data["sme_dets"][0])
     # create business
     new_sme = client.query(
         q.create(
@@ -236,13 +306,16 @@ def business_details_update(update, context):
                 "email":context.user_data["sme_dets"][1],
                 "address":context.user_data["sme_dets"][2],
                 "telephone":context.user_data["sme_dets"][3],
-                "category":choice.lower()
+                "category":choice.lower(),
+                "business_link":biz_link,
+                "chat_id": chat_id
             }}
         )
     )
     context.user_data["sme_name"] = context.user_data["sme_dets"][0]
     context.user_data["sme_id"] = new_sme["ref"].id()
     context.user_data["sme_cat"] = choice
+    context.user_data["sme_link"] = biz_link
     button = [[
         InlineKeyboardButton(
             text="Add a product",
@@ -260,6 +333,16 @@ def business_details_update(update, context):
 def add_product(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
+    if "link" in update.callback_query.data:
+        bot.send_message(
+            chat_id=chat_id,
+            text=context.user_data['sme_link']
+        )
+        bot.send_message(
+            chat_id=chat_id,
+            text="Here you go!, share the link with people so they can see your store."
+        )
+        return ConversationHandler.END
     bot.send_message(
         chat_id=chat_id,
         text="Add the Name, Description, and Price of product, "
@@ -362,6 +445,7 @@ def customer_pref(update, context):
                     text=f"{sme['data']['name']}",
                     reply_markup=InlineKeyboardMarkup(button)
                 )
+        return SHOW_STOCKS
     except NotFound:
         button = [[
             InlineKeyboardButton(
@@ -375,20 +459,20 @@ def customer_pref(update, context):
             reply_markup=InlineKeyboardMarkup(button)
         )
         return CLASS_STATE
-    return SHOW_STOCKS
+    # return SHOW_STOCKS
 
 def show_products(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
     data = update.callback_query.data
     if "pref" in  data:
-        data = data.split(',')[0].replace(' ', '')
+        data = data.split(',')[1]
         print(data)
         user = client.query(
             q.get(
-                q.ref(
-                    q.match(q.index('user_by_name'), context.user_data['user-data']['name']),
-
+                q.match(
+                    q.index('user_by_name'), 
+                    context.user_data['user-data']['name']
                 )
             )
         )
@@ -404,7 +488,7 @@ def show_products(update, context):
         button = [
             [
                 InlineKeyboardButton(
-                    text="Vieew more businesses category",
+                    text="View more businesses category",
                     callback_data='customer'
                 )
             ]
@@ -425,11 +509,20 @@ def show_products(update, context):
             )
         )
     )
-    # print(products)
-    if len(products) <= 0:
+
+    if len(products['data']) == 0:
+        button = [
+            [
+                InlineKeyboardButton(
+                    text="View businesses to buy from",
+                    callback_data="customer"
+                )
+            ]
+        ]
         bot.send_message(
             chat_id=chat_id,
-            text="'Nothing here yet, user hasn't added any products!, check back later"
+            text="'Nothing here yet, user hasn't added any products!, check back later",
+            reply_markup=InlineKeyboardMarkup(button)
         )
         return CLASS_STATE
     for product in products["data"]:
@@ -461,15 +554,15 @@ def post_view_products(update, context):
     bot = context.bot
     chat_id = update.callback_query.message.chat.id
     data = update.callback_query.data
-    product = client.query(
+    if "order" in data:
+        product = client.query(
         q.get(
             q.ref(
-                q.collection("Product"),
-                data.split(';')[1]
+                    q.collection("Product"),
+                    data.split(';')[1]
+                )
             )
-        )
-    )["data"]
-    if "order" in data:
+        )["data"]
         bot.send_message(
             chat_id=product['sme_chat_id'],
             text="Hey you have a new order"
@@ -494,7 +587,7 @@ def post_view_products(update, context):
             q.get( 
                 q.match(
                     q.index("business_by_name"), 
-                    product['sme']
+                    data.split(';')[1]
                 )
             )
         )['data']
