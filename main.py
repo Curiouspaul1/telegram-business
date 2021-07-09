@@ -1,3 +1,4 @@
+from re import search
 import handlers
 from telegram.ext import (
     CommandHandler, CallbackContext,
@@ -54,6 +55,9 @@ def main():
         allow_reentry=True
     )
     dispatcher.add_handler(conv_handler)
+    # extras
+    search = CommandHandler('search', handlers.search)
+    dispatcher.add_handler(search)
     updater.start_polling()
     updater.idle()
 
