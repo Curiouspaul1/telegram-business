@@ -273,6 +273,7 @@ def search(update, context):
                 )
             )
         )
+        print(result)
         for biz in result['data']:
             button = [
                 [
