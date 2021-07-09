@@ -265,7 +265,7 @@ def search(update, context):
     data = update.message.text.lower()
     # search for business using index
     try:
-        result = client.query(
+        biz = client.query(
             q.get(
                 q.match(
                     q.index("business_by_name"),
@@ -273,39 +273,37 @@ def search(update, context):
                 )
             )
         )
-        print(result)
-        for biz in result['data']:
-            button = [
-                [
-                    InlineKeyboardButton(
-                        text="View Products",
-                        callback_data=biz["data"]["name"]
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        text="Select for updates",
-                        callback_data="pref"+','+biz["data"]["name"]
-                    )
-                ]
-            ]
-            if "latest" in biz['data'].keys():
-                thumbnail = client.query(q.get(q.ref(q.collection("Product"), biz["data"]["latest"])))
-                print(thumbnail)
-                bot.send_photo(
-                    chat_id=chat_id,
-                    photo=thumbnail["data"]["image"],
-                    caption=f"{biz['data']['name']}",
-                    reply_markup=InlineKeyboardMarkup(button)
+        print(biz)
+        button = [
+            [
+                InlineKeyboardButton(
+                    text="View Products",
+                    callback_data=biz["data"]["name"]
                 )
-            else:
-                bot.send_message(
-                    chat_id=chat_id,
-                    text=f"{biz['data']['name']}",
-                    reply_markup=InlineKeyboardMarkup(button)
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Select for updates",
+                    callback_data="pref"+','+biz["data"]["name"]
+                )
+            ]
+        ]
+        if "latest" in biz['data'].keys():
+            thumbnail = client.query(q.get(q.ref(q.collection("Product"), biz["data"]["latest"])))
+            print(thumbnail)
+            bot.send_photo(
+                chat_id=chat_id,
+                photo=thumbnail["data"]["image"],
+                caption=f"{biz['data']['name']}",
+                reply_markup=InlineKeyboardMarkup(button)
+            )
+        else:
+            bot.send_message(
+                chat_id=chat_id,
+                text=f"{biz['data']['name']}",
+                reply_markup=InlineKeyboardMarkup(button)
                 )
         return SHOW_STOCKS
-
     except NotFound:
         button = [
             [
