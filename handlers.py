@@ -8,6 +8,7 @@ from telegram.ext import (
     ConversationHandler, MessageHandler,
     Filters, Updater, CallbackQueryHandler
 )
+from telegram.ext.conversationhandler import CheckUpdateType
 from config import (
     api_key, sender_email,
     api_secret,
@@ -38,8 +39,8 @@ cloudinary.config(
 client = FaunaClient(secret=FAUNA_KEY)
 
 # Define Options
-CHOOSING, CLASS_STATE, SME_DETAILS, CHOOSE_PREF, \
-    SME_CAT, ADD_PRODUCTS, SHOW_STOCKS, POST_VIEW_PRODUCTS = range(8)
+CHOOSING, CLASS_STATE, SME_DETAILS, CHOOSE_PREF, SEARCH,\
+    SME_CAT, ADD_PRODUCTS, SHOW_STOCKS, POST_VIEW_PRODUCTS = range(9)
 
 # inital options
 reply_keyboard = [
@@ -124,10 +125,17 @@ def start(update, context: CallbackContext) -> int:
                 button = [
                     [
                         InlineKeyboardButton(
-                            text="View businesses to buy from",
+                            text="View vendors to buy from",
                             callback_data="customer"
                         )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text="Search for a vendor by name",
+                            callback_data="customer;search"
+                        )
                     ]
+
                 ]
                 bot.send_message(
                     chat_id=chat_id,
@@ -236,6 +244,12 @@ def classer(update, context):
             )
         ]
     ]
+    if 'search' in update.callback_query.data.lower():
+        bot.send_message(
+            chat_id=chat_id,
+            text="Please enter the name of the business you're looking for"
+        )
+        return SEARCH
     bot.send_message(
         chat_id=chat_id,
         text="Here's a list of categories available"
@@ -243,6 +257,75 @@ def classer(update, context):
         reply_markup=InlineKeyboardMarkup(categories)
     )
     return CHOOSE_PREF
+
+
+def search(update, context):
+    bot = context.bot
+    chat_id = update.message.chat.id
+    data = update.message.text.lower()
+    # search for business using index
+    result = client.query(
+        q.get(
+            q.match(
+                q.index("business_by_name"),
+                data
+            )
+        )
+    )
+    if len(result['data']) < 1:
+        button = [
+            [
+                InlineKeyboardButton(
+                    text="View vendors to buy from",
+                    callback_data="customer"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Search for a vendor by name",
+                    callback_data="customer;search"
+                )
+            ]
+
+        ]
+        bot.send_message(
+            chat_id=chat_id,
+            text="Oops didn't find any vendor with that name"
+            "check with your spelling to be sure its correct.",
+            reply_markup=InlineKeyboardMarkup(button)
+        )
+        return CLASS_STATE
+    for biz in result['data']:
+        button = [
+            [
+                InlineKeyboardButton(
+                    text="View Products",
+                    callback_data=biz["data"]["name"]
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Select for updates",
+                    callback_data="pref"+','+biz["data"]["name"]
+                )
+            ]
+        ]
+        if "latest" in biz['data'].keys():
+            thumbnail = client.query(q.get(q.ref(q.collection("Product"), biz["data"]["latest"])))
+            print(thumbnail)
+            bot.send_photo(
+                chat_id=chat_id,
+                photo=thumbnail["data"]["image"],
+                caption=f"{biz['data']['name']}",
+                reply_markup=InlineKeyboardMarkup(button)
+            )
+        else:
+            bot.send_message(
+                chat_id=chat_id,
+                text=f"{biz['data']['name']}",
+                reply_markup=InlineKeyboardMarkup(button)
+            )
+    return SHOW_STOCKS
 
 def business_details(update, context):
     bot = context.bot
