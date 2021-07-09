@@ -1,3 +1,4 @@
+from six import text_type
 from telegram import (
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove, Update,
@@ -727,3 +728,13 @@ def cancel(update: Update, context: CallbackContext) -> int:
     )
 
     return ConversationHandler.END
+
+
+def search_(update, context):
+    bot = context.bot
+    chat_id = update.message.chat.id
+    bot.send_message(
+        chat_id=chat_id,
+        text="Please enter the name of the business you're looking for"
+    )
+    return SEARCH

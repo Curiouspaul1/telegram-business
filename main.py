@@ -56,7 +56,7 @@ def main():
     )
     dispatcher.add_handler(conv_handler)
     # extras
-    search = CommandHandler('search', handlers.search)
+    search = CommandHandler('search', handlers.search_)
     dispatcher.add_handler(search)
     updater.start_polling()
     updater.idle()
