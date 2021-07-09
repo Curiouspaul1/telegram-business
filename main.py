@@ -45,7 +45,9 @@ def main():
                 CallbackQueryHandler(handlers.post_view_products)
             ],
             handlers.SEARCH: [
-                MessageHandler(handlers.search)
+                MessageHandler(
+                    Filters.all, handlers.search
+                )
             ]
         },
         fallbacks=[CommandHandler('cancel', handlers.cancel)],
