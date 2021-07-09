@@ -1,3 +1,4 @@
+from re import search
 import handlers
 from telegram.ext import (
     CommandHandler, CallbackContext,
@@ -45,13 +46,18 @@ def main():
                 CallbackQueryHandler(handlers.post_view_products)
             ],
             handlers.SEARCH: [
-                MessageHandler(handlers.search)
+                MessageHandler(
+                    Filters.all, handlers.search
+                )
             ]
         },
         fallbacks=[CommandHandler('cancel', handlers.cancel)],
         allow_reentry=True
     )
     dispatcher.add_handler(conv_handler)
+    # extras
+    search = CommandHandler('search', handlers.search_)
+    dispatcher.add_handler(search)
     updater.start_polling()
     updater.idle()
 
