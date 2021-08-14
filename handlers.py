@@ -2,7 +2,8 @@ from six import text_type
 from telegram import (
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove, Update,
-    InlineKeyboardButton, InlineKeyboardMarkup
+    InlineKeyboardButton, InlineKeyboardMarkup,
+    chat
 )
 from telegram.ext import (
     CommandHandler, CallbackContext,
@@ -21,12 +22,13 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from faunadb import query as q
 from faunadb.client import FaunaClient
-from faunadb.errors import NotFound
+from faunadb.errors import FaunaError, NotFound
 from helpers import (
     emailcheck, dispatch_mail,
-    generate_link
+    generate_link, parse_product_info
 )
 import os
+import time
 
 
 # configure cloudinary
@@ -41,7 +43,8 @@ client = FaunaClient(secret=FAUNA_KEY)
 
 # Define Options
 CHOOSING, CLASS_STATE, SME_DETAILS, CHOOSE_PREF, SEARCH,\
-    SME_CAT, ADD_PRODUCTS, SHOW_STOCKS, POST_VIEW_PRODUCTS = range(9)
+    SME_CAT, ADD_PRODUCTS, SME_CATALOGUE, POST_VIEW_CATALOGUE,\
+         SHOW_STOCKS, POST_VIEW_PRODUCTS = range(11)
 
 # inital options
 reply_keyboard = [
@@ -106,6 +109,12 @@ def start(update, context: CallbackContext) -> int:
                             InlineKeyboardButton(
                                 text="Get a business link",
                                 callback_data="link"
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                text="View your catalogue",
+                                callback_data="catalogue"
                             )
                         ]
                     ]
@@ -429,6 +438,9 @@ def add_product(update, context):
             text="Here you go!, share the link with people so they can see your store."
         )
         return ConversationHandler.END
+    elif "catalogue" in update.callback_query.data:
+        context.user_data['sme_chat_id'] = chat_id
+        return SME_CATALOGUE
     bot.send_message(
         chat_id=chat_id,
         text="Add the Name, Description, and Price of product, "
@@ -436,50 +448,194 @@ def add_product(update, context):
     )
     return ADD_PRODUCTS
 
+def show_catalogue(update, context):
+    bot = context.bot
+    chat_id = context.user_data['sme_chat_id']
+    # fetch products owned by business
+    products = client.query(
+        q.map_(
+            lambda x: q.get(x),
+            q.paginate(
+                q.match(
+                    q.index("product_by_business"),
+                    context.user_data['sme_name']
+                )
+            )
+        )
+    )
+    if len(products['data']) == 0:
+        button = [
+            [
+                InlineKeyboardButton(
+                    text="Add products to your catalogue",
+                    callback_data=chat_id
+                )
+            ]
+        ]
+        bot.send_message(
+            chat_id=chat_id,
+            text="Hi! 😃 you don't seem to have added any products yet!.",
+            reply_markup=InlineKeyboardMarkup(button)
+        )
+        return ADD_PRODUCTS
+    for product in products["data"]:
+        context.user_data["sme_id"] = product['data']['sme']
+        button = [
+            [
+                InlineKeyboardButton(
+                    text="Edit Info",
+                    callback_data="Edit;" + product["ref"].id()
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Delete product from catalogue",
+                    callback_data="Delete;" +product["ref"].id()
+                )
+            ]
+        ]
+        bot.send_photo(
+            chat_id=chat_id,
+            photo=product["data"]["image"],
+            caption=f"{product['data']['name']} \nDescription: {product['data']['description']}\nPrice:{product['data']['price']}",
+            reply_markup=InlineKeyboardMarkup(button)
+        )
+    return POST_VIEW_CATALOGUE
+
+def post_show_catalogue(update, context):
+    bot = context.bot
+    chat_id = update.callback_query.message.chat.id
+    # check for selected option
+    data = update.callback_query.data
+    if "edit" in data:
+        bot.send_message(
+            chat_id=chat_id,
+            text="Kindly add details for the update using the following format, "
+            "{product_attribute: value} for example {price: 50} or perhaps, "
+            "{price: 50, description: new description}"
+        )
+        context.user_data['product_id'] = data.split(';')[1]
+        return POST_VIEW_CATALOGUE
+    # else if user chooses to remove product
+    # find product and delete
+    client.query(
+        q.delete(
+            q.ref(
+                q.collection('Product'),
+                data.split(';')[1]
+            )
+        )
+    )
+    button = [
+        [
+            InlineKeyboardButton(
+                text="Go back to catalogue",
+                callback_data=context.user_data['sme_name']
+            )
+        ]
+    ]
+    bot.send_message(
+        chat_id=chat_id,
+        text="Removed product from catalogue successfully! 🗑️",
+        reply_markup=InlineKeyboardMarkup(button)
+    )
+    return SME_CATALOGUE
+
+def update_product_info(update, context):
+    bot = context.bot
+    chat_id = update.message.chat.id
+    data = parse_product_info(update.message.text)
+    button = [
+        [
+            InlineKeyboardButton(
+                text="Go back to catalogue",
+                callback_data=context.user_data['sme_name']
+            )
+        ]
+    ]
+    if data is False:
+        bot.send_message(
+            chat_id=chat_id,
+            text="Invalid Entry, please try again",
+            reply_markup=InlineKeyboardMarkup(button)
+        )
+        return SME_CATALOGUE
+    # if it parsed the data correctly then we can update the product info
+    try:
+        client.query(
+            q.update(
+                q.ref(
+                    q.collection('Product'),
+                    context.user_data['product_id']
+                ),
+                {'data': data}
+            )
+        )
+        bot.send_message(
+            chat_id=chat_id,
+            text="Updated product details succesfully!",
+            reply_markup=InlineKeyboardMarkup(button)
+        )
+        return SME_CATALOGUE
+    except FaunaError as e:
+        bot.send_message(
+            chat_id=chat_id,
+            text="An error occurred while trying to update the product, "
+            "please try again!.",
+            reply_markup=InlineKeyboardMarkup(button)
+        )
+        # raise(e)
+        return SME_CATALOGUE
+
 def product_info(update: Update, context: CallbackContext):
     data = update.message
     bot = context.bot
     photo = bot.getFile(update.message.photo[-1].file_id)
-    file_ = open('product_image', 'wb')
+    file_ = open('product_image.png', 'wb')
     photo.download(out=file_)
     data = update.message.caption.split(',')
     # upload image to cloudinary
-    send_photo = upload('product_image', width=200, height=150, crop='thumb')
-    # create new product
-    newprod = client.query(
-        q.create(
-            q.collection("Product"),
-            {"data": {
-                    "name":data[0],
-                    "description":data[1],
-                    "price":float(data[2]),
-                    "image":send_photo["secure_url"],
-                    "sme":context.user_data["sme_name"],
-                    "sme_chat_id": update.message.chat.id,
-                    "category":context.user_data["sme_cat"]
+    with open('product_image.png', 'rb') as file_:
+        send_photo = upload(
+            file_, 
+            width=200, height=150, 
+            crop='thumb'
+        )
+        # create new product
+        newprod = client.query(
+            q.create(
+                q.collection("Product"),
+                {"data": {
+                        "name":data[0],
+                        "description":data[1],
+                        "price":float(data[2]),
+                        "image":send_photo["secure_url"],
+                        "sme":context.user_data["sme_name"],
+                        "sme_chat_id": update.message.chat.id,
+                        "category":context.user_data["sme_cat"]
+                    }
                 }
-            }
+            )
         )
-    )
-    # add new product as latest
-    client.query(
-        q.update(
-            q.ref(q.collection("Business"), context.user_data["sme_id"]),
-            {"data": {
-                "latest": newprod["ref"].id()
-            }}
+        # add new product as latest
+        client.query(
+            q.update(
+                q.ref(q.collection("Business"), context.user_data["sme_id"]),
+                {"data": {
+                    "latest": newprod["ref"].id()
+                }}
+            )
         )
-    )
-    # context.user_data["product_data"] = newprod['data']
-    button = [[InlineKeyboardButton(
-        text='Add another product',
-        callback_data=context.user_data["sme_name"]
-    )]]
-    update.message.reply_text(
-        "Added product successfully",
-        reply_markup=InlineKeyboardMarkup(button)
-    )
-    return ADD_PRODUCTS
+        # context.user_data["product_data"] = newprod['data']
+        button = [[InlineKeyboardButton(
+            text='Add another product',
+            callback_data=context.user_data["sme_name"]
+        )]]
+        update.message.reply_text(
+            "Added product successfully",
+            reply_markup=InlineKeyboardMarkup(button)
+        )
+        return ADD_PRODUCTS
 
 ## CUSTOMER
 def customer_pref(update, context):

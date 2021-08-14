@@ -49,6 +49,13 @@ def main():
                 MessageHandler(
                     Filters.all, handlers.search
                 )
+            ],
+            handlers.SME_CATALOGUE: [
+                CallbackQueryHandler(handlers.show_catalogue)
+            ],
+            handlers.POST_VIEW_CATALOGUE: [
+                CallbackQueryHandler(handlers.post_show_catalogue),
+                MessageHandler(Filters.all, handlers.update_product_info)
             ]
         },
         fallbacks=[CommandHandler('cancel', handlers.cancel)],

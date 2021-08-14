@@ -1,3 +1,4 @@
+from hashlib import new
 import re
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
@@ -61,3 +62,19 @@ def dispatch_mail(email):
 def generate_link(biz_name):
     url_ = "https://rdre.me/tgbiz"
     return f"{url_}/{biz_name}"
+
+
+# parse product update details
+def parse_product_info(data:str):
+    dic_ = {}
+    parsed_ = data.replace('}','')
+    parsed_ = parsed_.replace('{','')
+    parsed_ = parsed_.split(',')
+    for item in parsed_:
+        if len(item.split(':')) == 2:
+            data_ = item.split(':')
+            dic_[data_[0]] = dic_[data_[1]]
+        else:
+            return False
+    return dic_
+
