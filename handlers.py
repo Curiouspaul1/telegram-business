@@ -479,7 +479,7 @@ def show_catalogue(update, context):
         )
         return ADD_PRODUCTS
     for product in products["data"]:
-        context.user_data["sme_id"] = product['data']['sme']
+        context.user_data["sme_name"] = product['data']['sme']
         button = [
             [
                 InlineKeyboardButton(
@@ -507,7 +507,7 @@ def post_show_catalogue(update, context):
     chat_id = update.callback_query.message.chat.id
     # check for selected option
     data = update.callback_query.data
-    if "edit" in data:
+    if "Edit" in data:
         bot.send_message(
             chat_id=chat_id,
             text="Kindly add details for the update using the following format, "

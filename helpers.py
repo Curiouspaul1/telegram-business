@@ -70,10 +70,12 @@ def parse_product_info(data:str):
     parsed_ = data.replace('}','')
     parsed_ = parsed_.replace('{','')
     parsed_ = parsed_.split(',')
+    print(parsed_)
     for item in parsed_:
         if len(item.split(':')) == 2:
             data_ = item.split(':')
-            dic_[data_[0]] = dic_[data_[1]]
+            print(data_)
+            dic_[data_[0]] = data_[1]
         else:
             return False
     return dic_
