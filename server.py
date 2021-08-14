@@ -27,4 +27,3 @@ def link(biz_name):
 
 if __name__ == "__main__":
     app.run()
-
