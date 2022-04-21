@@ -31,3 +31,6 @@ python main.py
 
 - Test the bot out with your config variables, and add your changes as you deem fit on a separate branch.
 - Push to your forked repo and then send a PR with the description of the changes you added.
+
+### Coming Soon
+- Unique business link for direct access to a particular store's catalogue
