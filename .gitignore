@@ -2,3 +2,19 @@
 product_image
 *.env
 *.png
+
+
+# {
+#     biz_name: stack_for_latest[],
+#     biz_name: stack_for_latest[]
+# }
+
+# the latest -> points to the top of the stack
+
+# when new product is added its addend unto the stack
+# stack_for_latest.append(new_product)
+
+# when a product (which happens to be a latest product) is deleted
+# we pop() the stack
+
+#

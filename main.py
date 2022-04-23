@@ -1,72 +1,89 @@
-from re import search
-import handlers
 from telegram.ext import (
-    CommandHandler, CallbackContext,
+    CommandHandler,
     ConversationHandler, MessageHandler,
     Filters, Updater, CallbackQueryHandler
+)
+from sme_handlers import (
+    business_details, business_details_update,
+    add_product, product_info,
+    post_show_catalogue, update_product_info,
+    show_catalogue
+)
+from customer_handlers import (
+    customer_pref, show_products,
+    post_view_products
+)
+from generic_handlers import (
+    start, choose, classer,
+    searcher, search_, cancel
+)
+from consts import (
+    CHOOSING, CLASS_STATE, SME_DETAILS, SME_CAT, ADD_PRODUCTS,
+    SHOW_STOCKS, POST_VIEW_PRODUCTS, SME_CATALOGUE,
+    BIZ_SEARCH, POST_VIEW_CATALOGUE, CHOOSE_PREF
 )
 from config import TOKEN
 
 updater = Updater(token=TOKEN, use_context=True)
-print(updater)
 dispatcher = updater.dispatcher
 
 
 def main():
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', handlers.start)],
+        entry_points=[CommandHandler('start', start)],
         states={
-            handlers.CHOOSING: [
+            CHOOSING: [
                 MessageHandler(
-                    Filters.all, handlers.choose
+                    Filters.all, choose
                 )
             ],
-            handlers.CLASS_STATE: [
-                CallbackQueryHandler(handlers.classer)
+            CLASS_STATE: [
+                CallbackQueryHandler(classer)
             ],
-            handlers.SME_DETAILS: [
+            SME_DETAILS: [
                 MessageHandler(
-                    Filters.all, handlers.business_details
+                    Filters.all, business_details
                 )
             ],
-            handlers.SME_CAT: [
-                CallbackQueryHandler(handlers.business_details_update)
+            SME_CAT: [
+                CallbackQueryHandler(business_details_update)
             ],
-            handlers.ADD_PRODUCTS: [
-                CallbackQueryHandler(handlers.add_product),
-                MessageHandler(Filters.all, handlers.product_info)
+            ADD_PRODUCTS: [
+                CallbackQueryHandler(add_product),
+                MessageHandler(Filters.all, product_info)
             ],
-            handlers.CHOOSE_PREF: [
-                CallbackQueryHandler(handlers.customer_pref)
+            CHOOSE_PREF: [
+                CallbackQueryHandler(customer_pref)
             ],
-            handlers.SHOW_STOCKS: [
-                CallbackQueryHandler(handlers.show_products)
+            SHOW_STOCKS: [
+                CallbackQueryHandler(show_products)
             ],
-            handlers.POST_VIEW_PRODUCTS: [
-                CallbackQueryHandler(handlers.post_view_products)
+            POST_VIEW_PRODUCTS: [
+                CallbackQueryHandler(post_view_products)
             ],
-            handlers.SEARCH: [
+            BIZ_SEARCH: [
                 MessageHandler(
-                    Filters.all, handlers.search
+                    Filters.all, searcher
                 )
             ],
-            handlers.SME_CATALOGUE: [
-                CallbackQueryHandler(handlers.show_catalogue)
+            SME_CATALOGUE: [
+                CallbackQueryHandler(show_catalogue)
             ],
-            handlers.POST_VIEW_CATALOGUE: [
-                CallbackQueryHandler(handlers.post_show_catalogue),
-                MessageHandler(Filters.all, handlers.update_product_info)
+            POST_VIEW_CATALOGUE: [
+                CallbackQueryHandler(post_show_catalogue),
+                MessageHandler(Filters.all, update_product_info)
             ]
         },
-        fallbacks=[CommandHandler('cancel', handlers.cancel)],
+        fallbacks=[CommandHandler('cancel', cancel)],
         allow_reentry=True
     )
     dispatcher.add_handler(conv_handler)
     # extras
-    search = CommandHandler('search', handlers.search_)
+    search = CommandHandler('search', search_)
     dispatcher.add_handler(search)
     updater.start_polling()
     updater.idle()
+
 
 if __name__ == '__main__':
     main()

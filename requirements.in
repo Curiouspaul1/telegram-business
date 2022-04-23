@@ -1,0 +1,5 @@
+python-dotenv==0.20.0
+python-telegram-bot==13.11
+sendgrid==6.9.7
+cloudinary==1.29.0
+faunadb==4.2.0
