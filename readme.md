@@ -35,3 +35,4 @@ python main.py
 ### Coming Soon
 - Unique business link for direct access to a particular store's catalogue
 - search for businesses by name
+- cart functionality
