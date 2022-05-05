@@ -7,6 +7,7 @@ from faunadb.errors import NotFound
 from consts import (
     SHOW_STOCKS, CLASS_STATE, POST_VIEW_PRODUCTS
 )
+import os
 
 
 def customer_pref(update, context):
@@ -153,8 +154,17 @@ def show_products(update, context):
                     text="Contact business owner",
                     callback_data="contact;" + product["data"]["sme"]
                 )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Add Item To Cart",
+                    callback_data="cart;" + product["ref"].id()
+                )
             ]
         ]
+        context.user_data['product_price'] = product['data']['price']
+        context.user_data['product_id'] = product['ref'].id()
+        context.user_data['product_name'] = product['data']['name']
         bot.send_photo(
             chat_id=chat_id,
             photo=product["data"]["image"],
@@ -209,3 +219,72 @@ def post_view_products(update, context):
             chat_id=chat_id,
             text=f"Name: {sme_['name']}\n\nTelephone: {sme_['telephone']}\n\nEmail:{sme_['email']}"
         )
+    elif 'cart' in data:
+        # add product details to cart
+        client.query(
+            q.do(
+                q.let(
+                    {
+                        "cart": q.if_(
+                            q.is_empty(
+                                q.match(
+                                    q.index('cart_by_chat_id'),
+                                    chat_id
+                                )
+                            ),
+                            q.pow(2, 3),
+                            q.get(
+                                q.match(
+                                    q.index('cart_by_chat_id'),
+                                    chat_id
+                                )
+                            )
+                        )
+                    },
+
+                    q.update(
+                        q.select(['ref'], q.var('cart')),
+                        {
+                            "data": {
+                                "items": q.append(
+                                    {
+                                        'product_id': context.user_data['product_id'],
+                                        'product': context.user_data['product_name'],
+                                        'price': context.user_data['product_price']
+                                    },
+                                    q.select(['data', 'items'], q.var('cart'))
+                                )
+                            }
+                        }
+                    )
+                )
+            )
+        )
+        # send response
+        bot.send_message(
+            chat_id=chat_id,
+            text="Item Added to cart"
+        )
+
+
+def cart(update, context):
+    bot = context.bot
+    chat_id = update.message.chat.id
+    # get user cart
+    cart = client.query(
+        q.get(
+            q.match(
+                q.index('cart_by_chat_id'),
+                chat_id
+            )
+        )
+    )
+    bot.send_message(
+        chat_id=chat_id,
+        text=f"Here's your unique cart id {cart['ref'].id()}"
+    )
+    bot.send_message(
+        chat_id=chat_id,
+        text=f"Click on this link to go to the checkout page -> {os.getenv('CHECKOUT_PAGE')}"
+    )
+    return CLASS_STATE

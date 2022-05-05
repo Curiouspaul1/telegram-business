@@ -11,7 +11,7 @@ from sme_handlers import (
 )
 from customer_handlers import (
     customer_pref, show_products,
-    post_view_products
+    post_view_products, cart
 )
 from generic_handlers import (
     start, choose, classer,
@@ -80,7 +80,9 @@ def main():
     dispatcher.add_handler(conv_handler)
     # extras
     search = CommandHandler('search', search_)
+    cart_ = CommandHandler('cart', cart)
     dispatcher.add_handler(search)
+    dispatcher.add_handler(cart_)
     updater.start_polling()
     updater.idle()
 

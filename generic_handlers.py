@@ -51,14 +51,12 @@ def start(update, context: CallbackContext) -> int:
             )
         )
         if _user is not None:
-            print(_user)
             bot.send_message(
                 chat_id=chat_id,
                 text="Hi it seems you already have an account with us!"
             )
             # figure out  what kind of user they are
             if _user['data']['is_smeowner']:
-                print("yes")
                 # find business with user's chat_id
                 sme = client.query(
                     q.get(
@@ -159,16 +157,29 @@ def choose(update, context):
         )
         return ConversationHandler.END
     new_user = client.query(
-        q.create(q.collection('User'), {
-            "data": {
-                "name": data[0],
-                "email": data[1],
-                "telephone": data[2],
-                "is_smeowner": False,
-                "preference": "",
-                "chat_id": chat_id
-            }
-        })
+        q.do(
+            # create cart
+            q.create(
+                q.collection("Cart"),
+                {
+                    "data":
+                    {
+                        "items": [],
+                        "chat_id": chat_id
+                    }
+                }
+            ),
+            q.create(q.collection('User'), {
+                "data": {
+                    "name": data[0],
+                    "email": data[1],
+                    "telephone": data[2],
+                    "is_smeowner": False,
+                    "preference": "",
+                    "chat_id": chat_id
+                }
+            })
+        )
     )
     context.user_data["user-id"] = new_user["ref"].id()
     context.user_data["user-name"] = data[0]
@@ -179,8 +190,6 @@ def choose(update, context):
         "Which of the following do you identify as ?",
         reply_markup=markup
     )
-    # print(data[1].replace(" ",""))
-    # print(emailcheck(data[1].replace(" ","")))
     if emailcheck(data[1].replace(" ", "")):
         dispatch_mail(data[1].replace(" ", ""))
     return CLASS_STATE
@@ -259,7 +268,6 @@ def searcher(update, context):
                 )
             )
         )
-        print(biz)
         button = [
             [
                 InlineKeyboardButton(

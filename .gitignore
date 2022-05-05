@@ -1,7 +1,10 @@
 *__pycache__/
 product_image
+test.py
+server.py
 *.env
 *.png
+.vscode/
 
 
 # {

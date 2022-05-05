@@ -283,7 +283,8 @@ def post_show_catalogue(update, context):
                         {
                             "data": {
                                 "stack": q.reverse(
-                                    q.drop(1,
+                                    q.drop(
+                                        1,
                                         q.reverse(
                                             q.select(
                                                 ['data', 'stack'],
